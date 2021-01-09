@@ -8,7 +8,7 @@ use clap::{Arg, App, AppSettings};
 
 fn main() {
 
-	let matches = App::new(crate_name!())
+	let mut app = App::new("binance")
 		.setting(AppSettings::ColoredHelp)
 		.version(crate_version!())
 		.author(crate_authors!())
@@ -16,29 +16,27 @@ fn main() {
 
 		.subcommand(App::new("balance")
 			.setting(AppSettings::ColoredHelp)
-			.arg(Arg::new("asset")
-				.short('a')
-				.long("asset")
-				.required(true)
-				.about("Asset, ex: btc")
-				.takes_value(true)))
+			.about("Prints balance of the given asset in your account")
+			.arg(Arg::new("ASSET")
+				.about("Asset, example: btc")
+				.index(1)
+				.required(true)))
 
 		.subcommand(App::new("trades")
 			.setting(AppSettings::ColoredHelp)
-			.arg(Arg::new("symbol")
-				.short('s')
-				.long("symbol")
-				.required(true)
-				.about("Symbol, ex: btcusdt")
-				.takes_value(true))
-			.arg(Arg::new("output")
+			.about("Prints all the trades made in the given parity")
+			.arg(Arg::new("SYMBOL")
+				.about("Symbol, example: btcusdt")
+				.index(1)
+				.required(true))
+			.arg(Arg::new("FORMAT")
 				.short('o')
-				.long("output")
+				.long("output-as")
 				.required(false)
-				.about("Output format, ex: ledger")
-				.takes_value(true)))
+				.about("Output format, available values: { ledger }")
+				.takes_value(true)));
 
-		.get_matches();
+	let matches = app.clone().get_matches();
 
 	let account: Account = Binance::new(
 		get_env_var("BINANCE_API_KEY"),
@@ -47,7 +45,7 @@ fn main() {
 
 	// balance
 	if let Some(ref matches) = matches.subcommand_matches("balance") {
-		let asset = matches.value_of("asset");
+		let asset = matches.value_of("ASSET");
 		match account.get_balance(asset.unwrap().to_uppercase()) {
 			Ok(response) => println!("{:?}", response), // format_output(response, "ledger")
 			Err(e) => println!("Error: {}", e),
@@ -56,11 +54,16 @@ fn main() {
 
 	// trades
 	else if let Some(ref matches) = matches.subcommand_matches("trades") {
-		let symbol = matches.value_of("symbol");
+		let symbol = matches.value_of("SYMBOL");
 		match account.trade_history(symbol.unwrap().to_uppercase()) {
 			Ok(response) => println!("{:?}", response),
 			Err(e) => println!("Error: {}", e),
 		};
+	}
+
+	// {no sub command}
+	else {
+		app.print_help().unwrap();
 	}
 
 }
