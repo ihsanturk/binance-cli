@@ -8,6 +8,7 @@ use chrono::{Utc, TimeZone, Local};
 use binance::account::*;
 use clap::{Arg, App, AppSettings};
 
+
 fn main() {
 
 	let mut app = App::new("binance")
@@ -60,7 +61,11 @@ fn main() {
 	else if let Some(ref matches) = matches.subcommand_matches("trades") {
 		let symbol = matches.value_of("SYMBOL");
 		match account.trade_history(symbol.unwrap().to_uppercase()) {
-			Ok(response) => println!("{:?}", response),
+			Ok(trades) => {
+				for trade in trades {
+					println!("{}", format(trade, symbol.unwrap().to_string()));
+				}
+			},
 			Err(e) => println!("Error: {}", e),
 		};
 	}
@@ -72,6 +77,7 @@ fn main() {
 
 }
 
+
 fn get_env_var(key: &str) -> Option<String> {
 	match std::env::var(key) {
 		Ok(value) => Some(value),
@@ -81,6 +87,7 @@ fn get_env_var(key: &str) -> Option<String> {
 		},
 	}
 }
+
 
 fn format(trade: binance::model::TradeHistory, symbol: String) -> String {
 
@@ -101,7 +108,7 @@ fn format(trade: binance::model::TradeHistory, symbol: String) -> String {
 	//                  "link-usdt" or "link/usdt" and split from that char
 	let (left_asset, right_asset) = symbol.split_at(3);
 	let left_amount = trade.qty;
-	let right_amount = trade.price;
+	let right_amount = trade.price * trade.qty;
 
 	let left = format!("{} {}", left_amount, left_asset);
 	let right = format!("{} {}", right_amount, right_asset);
@@ -131,19 +138,30 @@ fn format(trade: binance::model::TradeHistory, symbol: String) -> String {
 		"asset:binance.com:{account}",
 		account = p2account.unwrap(),
 	);
-	let transaction_trade = format!("{header}\n{indent}{p1}\n{indent}{p2}",
+	let transaction_trade = format!("{header}\n{indent}{p1}\n{indent}{p2}\n",
 		header = header_trade,
 		indent = indent,
 		p1 = posting1_trade,
 		p2 = posting2_trade,
 	);
 
-	return transaction_trade;
+	let transaction_fee = format!("{header}\n{indent}{p1}\n{indent}{p2}\n",
+		header = format!("{} fee", header_trade),
+		indent = indent,
+		p1 = format!("asset:binance.com:fee{indent}{amount} {asset}",
+			indent = indent,
+			amount = trade.commission,
+			asset = trade.commission_asset.to_lowercase(),
+		),
+		p2 = format!("asset:binance.com:{}",
+			trade.commission_asset.to_lowercase()),
+	);
 
-	// let transactions = format!("{t1}\n\n{t2}",
-	// 	t1 = transaction_trade,
-	// 	t2 = transaction_fee
-	// );
-	// return transactions;
+	let transactions = format!("{t1}\n{t2}",
+		t1 = transaction_trade,
+		t2 = transaction_fee
+	);
+
+	return transactions;
 
 }
