@@ -34,9 +34,9 @@ fn main() {
 				.index(1)
 				.required(true))
 			.arg(Arg::new("FORMAT")
-				.about("Output format, available values: { ledger }")
+				.about("Output format, available values: [ ledger ]")
 				.short('o')
-				.long("output-as")
+				.long("output")
 				.required(false)
 				.takes_value(true))
 		);
@@ -59,13 +59,36 @@ fn main() {
 
 	// trades
 	else if let Some(ref matches) = matches.subcommand_matches("trades") {
+		let output_format = match matches.value_of("FORMAT") {
+			Some(value) => match value.to_lowercase().as_str() {
+				"ledger" => "ledger",
+				"" | " " => "",
+				unknown => {
+					eprintln!("unknown output format: {}, available values: [ ledger ]",
+						unknown);
+					std::process::exit(2);
+				},
+			},
+			_ => "",
+		};
 		let symbol = matches.value_of("SYMBOL");
 		match account.trade_history(symbol.unwrap().to_uppercase()) {
+
 			Ok(trades) => {
-				for trade in trades {
-					println!("{}", format(trade, symbol.unwrap().to_string()));
+				match output_format {
+					"ledger" => {
+						for trade in trades {
+							println!("{}", format(trade, symbol.unwrap().to_string()));
+						}
+					},
+					_ => {
+						for trade in trades {
+							println!("{:?}\n", trade);
+						}
+					},
 				}
 			},
+
 			Err(e) => println!("Error: {}", e),
 		};
 	}
@@ -73,7 +96,7 @@ fn main() {
 	// {no sub command}
 	else {
 		app.print_help().unwrap();
-	}
+	};
 
 }
 
@@ -162,6 +185,6 @@ fn format(trade: binance::model::TradeHistory, symbol: String) -> String {
 		t2 = transaction_fee
 	);
 
-	return transactions;
+	transactions
 
 }
