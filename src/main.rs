@@ -33,6 +33,11 @@ fn main() {
 				.about("Symbol, example: btcusdt")
 				.index(1)
 				.required(true))
+			.arg(Arg::new("TIMESTAMP")
+				.about("Prints trades since given timestamp instead of all of them")
+				.short('s')
+				.long("since")
+				.takes_value(true))
 			.arg(Arg::new("FORMAT")
 				.about("Output format, available values: [ ledger ]")
 				.short('o')
@@ -71,18 +76,29 @@ fn main() {
 			},
 			_ => "",
 		};
+		let since = match matches.value_of("TIMESTAMP") {
+			Some(timestamp_str) => match timestamp_str.parse::<u64>() {
+				Ok(val) => val,
+				Err(e) => {
+					eprintln!("{}: {:?}", e, timestamp_str);
+					std::process::exit(2);
+				},
+			},
+			_ => 0,
+		};
 		let symbol = matches.value_of("SYMBOL");
 		match account.trade_history(symbol.unwrap().to_uppercase()) {
 
-			Ok(trades) => {
+			Ok(mut trades) => {
+				trades.retain(|t| (t.time as f64 / 1000.0) as u64 > since);
 				match output_format {
 					"ledger" => {
-						for trade in trades {
+						for trade in &trades {
 							println!("{}", format(trade, symbol.unwrap().to_string()));
 						}
 					},
 					_ => {
-						for trade in trades {
+						for trade in &trades {
 							println!("{:?}\n", trade);
 						}
 					},
@@ -112,7 +128,7 @@ fn get_env_var(key: &str) -> Option<String> {
 }
 
 
-fn format(trade: binance::model::TradeHistory, symbol: String) -> String {
+fn format(trade: &binance::model::TradeHistory, symbol: String) -> String {
 
 	let indent = "    ";
 
