@@ -1,12 +1,16 @@
 [package]
 name = "binance-cli"
-version = "0.1.0"
-description = "manage your binance account"
+version = "0.1.1"
+description = "Manage your binance account"
 authors = ["ihsan <ihsanl@pm.me>"]
 edition = "2018"
+[[bin]]
+name = "binance"
+path = "src/main.rs"
 
 [dependencies]
 binance = { git = "https://github.com/wisespace-io/binance-rs.git" }
+chrono = "0.4.19"
 
 [dependencies.clap]
 version = "3.0.0-beta.2"
